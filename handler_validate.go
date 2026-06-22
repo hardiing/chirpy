@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 func validateHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,7 +14,7 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type returnVals struct {
-		Valid bool `json:"valid"`
+		Cleaned string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -32,5 +34,19 @@ func validateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, 200, returnVals{Valid: true})
+	checkedPost := profaneCheck(params.Body)
+
+	respondWithJSON(w, 200, returnVals{Cleaned: checkedPost})
+}
+
+func profaneCheck(chirp string) string {
+	badWords := []string{"kerfuffle", "sharbert", "fornax"}
+	post := strings.Fields(chirp)
+	for i, word := range post {
+		if slices.Contains(badWords, strings.ToLower(word)) {
+			post[i] = "****"
+		}
+	}
+	cleanedChirp := strings.Join(post, " ")
+	return cleanedChirp
 }
