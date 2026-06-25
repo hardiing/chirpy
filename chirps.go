@@ -109,3 +109,36 @@ func (cfg *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, 200, allChirps)
 }
+
+func (cfg *apiConfig) getSingleChirpHandler(w http.ResponseWriter, r *http.Request) {
+	type Chirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		User_ID   uuid.UUID `json:"user_id"`
+	}
+
+	path := r.PathValue("chirpID")
+	parsedUUID, err := uuid.Parse(path)
+	if err != nil {
+		msg := fmt.Sprintf("Invalid UUID string: %s", err)
+		respondWithError(w, 500, msg)
+	}
+
+	chirp, err := cfg.db.GetSingleChirp(r.Context(), parsedUUID)
+	convertChirp := Chirp{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		User_ID:   chirp.UserID,
+	}
+	if err != nil {
+		msg := fmt.Sprintf("Error getting single chirp: %s", err)
+		respondWithError(w, 404, msg)
+		return
+	}
+
+	respondWithJSON(w, 200, convertChirp)
+}
