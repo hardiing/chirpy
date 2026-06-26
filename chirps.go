@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hardiing/chirpy/internal/auth"
 	"github.com/hardiing/chirpy/internal/database"
 )
 
@@ -45,9 +46,22 @@ func (cfg *apiConfig) chirpsHandler(w http.ResponseWriter, r *http.Request) {
 
 	checkedPost := profaneCheck(params.Body)
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting authentication header: %s", err)
+		respondWithError(w, 500, msg)
+		return
+	}
+	validatedUser, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		msg := fmt.Sprintf("Error validating JWT: %s", err)
+		respondWithError(w, 401, msg)
+		return
+	}
+
 	query_params := database.CreateChirpParams{
 		Body:   checkedPost,
-		UserID: params.User_ID,
+		UserID: validatedUser,
 	}
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), query_params)

@@ -64,8 +64,9 @@ func (cfg *apiConfig) usersHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Password string `json:"password"`
-		Email    string `json:"email"`
+		Password         string `json:"password"`
+		Email            string `json:"email"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
 	}
 
 	type User struct {
@@ -73,6 +74,7 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
+		Token     string    `json:"token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -82,6 +84,10 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("Error decoding parameters: %s", err)
 		respondWithError(w, 500, msg)
 		return
+	}
+
+	if params.ExpiresInSeconds == 0 || params.ExpiresInSeconds > 3600 {
+		params.ExpiresInSeconds = 3600
 	}
 
 	user, err := cfg.db.UserLookup(r.Context(), params.Email)
@@ -103,11 +109,21 @@ func (cfg *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	duration := time.Duration(params.ExpiresInSeconds) * time.Second
+
+	token, err := auth.MakeJWT(user.ID, cfg.secret, duration)
+	if err != nil {
+		msg := fmt.Sprintf("Error making JWT: %s", err)
+		respondWithError(w, 500, msg)
+		return
+	}
+
 	apiUser := User{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	}
 
 	respondWithJSON(w, 200, apiUser)
