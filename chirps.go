@@ -156,3 +156,49 @@ func (cfg *apiConfig) getSingleChirpHandler(w http.ResponseWriter, r *http.Reque
 
 	respondWithJSON(w, 200, convertChirp)
 }
+
+func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting token: %s", err)
+		respondWithError(w, 401, msg)
+		return
+	}
+
+	validated_user, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		msg := fmt.Sprintf("Error validating JWT: %s", err)
+		respondWithError(w, 401, msg)
+		return
+	}
+
+	path := r.PathValue("chirpID")
+	parsedUUID, err := uuid.Parse(path)
+	if err != nil {
+		msg := fmt.Sprintf("Invalid UUID string: %s", err)
+		respondWithError(w, 500, msg)
+		return
+	}
+
+	chirp, err := cfg.db.GetSingleChirp(r.Context(), parsedUUID)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting chirp: %s", err)
+		respondWithError(w, 404, msg)
+		return
+	}
+
+	if chirp.UserID != validated_user {
+		msg := "You do not own this chirp"
+		respondWithError(w, 403, msg)
+		return
+	}
+
+	err = cfg.db.DeleteChirp(r.Context(), parsedUUID)
+	if err != nil {
+		msg := fmt.Sprintf("Error deleting chirp: %s", err)
+		respondWithError(w, 500, msg)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
