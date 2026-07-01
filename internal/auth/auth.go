@@ -2,6 +2,8 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/alexedwards/argon2id"
 )
@@ -20,4 +22,13 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 		return false, fmt.Errorf("Password does not match: %s", err)
 	}
 	return match, nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	value := headers.Get("Authorization")
+	if value == "" {
+		return "", fmt.Errorf("Authorization header not found")
+	}
+	splitValue := strings.Fields(value)
+	return splitValue[1], nil
 }

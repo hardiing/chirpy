@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/hardiing/chirpy/internal/auth"
 )
 
 func (cfg *apiConfig) webhookHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +26,17 @@ func (cfg *apiConfig) webhookHandler(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("Error decoding parameters: %s", err)
 		respondWithError(w, 500, msg)
 		return
+	}
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting API Key: %s", err)
+		respondWithError(w, 401, msg)
+		return
+	}
+
+	if apiKey != cfg.api_key {
+		respondWithError(w, 401, "Invalid API Key")
 	}
 
 	if params.Event != "user.upgraded" {

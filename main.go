@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	secret         string
+	api_key        string
 }
 
 func main() {
@@ -25,6 +26,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	secret := os.Getenv("JWT_SECRET")
+	apiKey := os.Getenv("POLKA_KEY")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %s\n", err)
@@ -38,6 +40,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		secret:         secret,
+		api_key:        apiKey,
 	}
 
 	fileServerHandler := http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))
